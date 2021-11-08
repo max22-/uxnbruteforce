@@ -212,20 +212,6 @@ bruteforce(Uxn *u, Uint16 max_length)
       return;
     }
 
-    if(u->ram.dat[0x100] == 0x9b && u->ram.dat[0x101] == 0x1a && u->ram.dat[0x102] == 0x19) {
-      printf("Soluce :\n");
-      printf("wst ptr = #%02x\n", u->wst.ptr);
-      for(i = 0; i < u->wst.ptr; i++)
-	printf("#%02x ", u->wst.dat[i]);
-      printf("\n");
-      return;
-      
-    }
-
-    /*for(i = 0; i < max_length; i++)
-      printf("%02x ", program[i]);
-      printf("\n");*/
-    
     if(program[max_length - 1] == 255)
       return;
 
