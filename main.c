@@ -244,6 +244,8 @@ inc(Uint8 *program, Uint16 max_length)
   }
 }
 
+
+/* We skip all programs that contain a jump, to avoid infinite loops */
 static int
 check_program(Uint8 *program, Uint16 max_length)
 {
