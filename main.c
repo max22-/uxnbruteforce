@@ -14,6 +14,10 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
+/* Config
+
+*/
+
 static int
 error(char *msg, const char *err)
 {
@@ -53,7 +57,7 @@ uxn_halt(Uxn *u, Uint8 error, char *name, int id)
 }
 
 static int
-uxn_reset(Uxn *u)
+uxn_reset_full(Uxn *u, Uint16 max_length)    /* max_length is here only to have the same prototype as uxn_reset_fast */
 {
   if(!uxn_boot(u))
     return error("Boot", "Failed");
@@ -77,22 +81,38 @@ uxn_reset(Uxn *u)
   return 1;
 }
 
+static void
+uxn_reset_fast(Uxn *u, Uint8 max_length)
+{
+  int i;
+  u->wst.ptr = 0;
+  u->wst.kptr = 0;
+  u->wst.error = 0;
+  u->rst.ptr = 0;
+  u->rst.kptr = 0;
+  u->rst.error = 0;
+  u->dev[0].dat[0xf] = 0;
+}
+
 #define PUSH8(u, a) { u->wst.dat[u->wst.ptr++] = a; }
 #define POP8(u) ( u->wst.dat[--u->wst.ptr] )
 #define COUNT8(u) ( u->wst.ptr )
 #define PUSH16(u, a) { PUSH8(u, a >> 8); PUSH8(u, a); }
 #define POP16(u) ( POP8(u) + (POP8(u) << 8) )
+#define COUNT16(u) ( COUNT8(u) / 2 )
 #define LOAD(u, p, l) { int i; for(i = 0; i < l; i++) u->ram.dat[PAGE_PROGRAM+i] = p[i]; }
 #define RST_IS_EMPTY(u) ( u->rst.ptr == 0 )
 #define DUMP_WST(u) { int i; printf(" [ "); for(i = 0; i < u->wst.ptr; i++) printf("%02x ", u->wst.dat[i]); printf(" ]"); }
 
+#define UXN_RESET uxn_reset_fast
+
 static int
-check_mod(Uxn *u, Uint8 *program, Uint8 max_length, Uint8 a, Uint8 b, Uint8 r)
+check_mod(Uxn *u, Uint8 *program, Uint16 max_length, Uint8 a, Uint8 b, Uint8 r)
 {
   int i;
   Uint8 p;
 
-  uxn_reset(u);
+  UXN_RESET(u, max_length);
   LOAD(u, program, max_length);
   PUSH8(u, a);
   PUSH8(u, b);
@@ -125,7 +145,7 @@ check_mod(Uxn *u, Uint8 *program, Uint8 max_length, Uint8 a, Uint8 b, Uint8 r)
 
 
 static int
-check(Uxn *u, Uint8 *program, Uint8 max_length)
+check(Uxn *u, Uint8 *program, Uint16 max_length)
 {
   return check_mod(u, program, max_length, 10, 3, 10%3)
     && check_mod(u, program, max_length, 8, 4, 8%4)
@@ -216,7 +236,9 @@ int
 main(int argc, char **argv)
 {
 	Uxn u;
-	bruteforce(&u, 3);
+	Uint16 max_length = 4;
+	uxn_reset_full(&u, max_length);  /* At 1 full reset to initalize the devices (fast reset doesn't initialize them) */
+	bruteforce(&u, max_length);
 	return 0; 
 
 }
