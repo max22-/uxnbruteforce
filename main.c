@@ -117,12 +117,12 @@ static int
 check(Uxn *u, Uint8 *program, Uint16 max_length)
 {
   #define TESTS 4
-  const Uint8 inputs[TESTS][2] = {
+  const Uint16 inputs[TESTS][2] = {
     {10, 3},
     {8, 4},
     {53, 45},
     {136, 31}};
-  const Uint8 outputs[TESTS] = {
+  const Uint16 outputs[TESTS] = {
     10%3,
     8%4,
     53%45,
@@ -134,8 +134,8 @@ check(Uxn *u, Uint8 *program, Uint16 max_length)
   
     UXN_RESET(u, max_length);
     LOAD(u, program, max_length);
-    PUSH8(u, inputs[i][0]);
-    PUSH8(u, inputs[i][1]);
+    PUSH16(u, inputs[i][0]);
+    PUSH16(u, inputs[i][1]);
 
   
     DUMP_PROGRAM(u, max_length);
@@ -148,9 +148,9 @@ check(Uxn *u, Uint8 *program, Uint16 max_length)
     PRINT("\n");
     
     
-    if(COUNT8(u) != 1)
+    if(COUNT16(u) != 1)
       return 0;
-    if(POP8(u) != outputs[i])
+    if(POP16(u) != outputs[i])
       return 0;
     if(!RST_IS_EMPTY(u))
       return 0;
