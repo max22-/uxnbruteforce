@@ -14,9 +14,6 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
-/* Config
-
-*/
 
 static int
 error(char *msg, const char *err)
@@ -102,55 +99,63 @@ uxn_reset_fast(Uxn *u, Uint8 max_length)
 #define COUNT16(u) ( COUNT8(u) / 2 )
 #define LOAD(u, p, l) { int i; for(i = 0; i < l; i++) u->ram.dat[PAGE_PROGRAM+i] = p[i]; }
 #define RST_IS_EMPTY(u) ( u->rst.ptr == 0 )
+
+#define DEBUG
+#ifdef DEBUG
 #define DUMP_WST(u) { int i; printf(" [ "); for(i = 0; i < u->wst.ptr; i++) printf("%02x ", u->wst.dat[i]); printf(" ]"); }
+#define DUMP_PROGRAM(u, l) { int i; for(i = 0; i < max_length; i++) printf("%02x ", u->ram.dat[PAGE_PROGRAM+i]); }
+#define PRINT(m) { printf("%s", m); }
+#else
+#define DUMP_WST(u) { }
+#define DUMP_PROGRAM(u, l) { }
+#define PRINT(m) { }
+#endif
 
 #define UXN_RESET uxn_reset_fast
 
 static int
-check_mod(Uxn *u, Uint8 *program, Uint16 max_length, Uint8 a, Uint8 b, Uint8 r)
-{
-  int i;
-  Uint8 p;
-
-  UXN_RESET(u, max_length);
-  LOAD(u, program, max_length);
-  PUSH8(u, a);
-  PUSH8(u, b);
-
-  
-  printf("check ");
-  for(i = 0; i < max_length; i++)
-    printf("%02x ", u->ram.dat[PAGE_PROGRAM+i]);
-  DUMP_WST(u);
-  printf(" --> ");
-  
-  uxn_eval(u, PAGE_PROGRAM);
-  
-  DUMP_WST(u);
-  printf("\n");
-  
-
-  if(COUNT8(u) != 1)
-    return 0;
-  p = POP8(u);
-  printf("p = %02x\n", p);
-  if(p != r)
-    return 0;
-  if(!RST_IS_EMPTY(u)) {
-    printf("rst is not empty");
-    return 0;
-  }
-  return 1;
-}
-
-
-static int
 check(Uxn *u, Uint8 *program, Uint16 max_length)
 {
-  return check_mod(u, program, max_length, 10, 3, 10%3)
-    && check_mod(u, program, max_length, 8, 4, 8%4)
-    && check_mod(u, program, max_length, 53, 45, 53%45)
-    && check_mod(u, program, max_length, 136, 31, 136%31);
+  #define TESTS 4
+  const Uint8 inputs[TESTS][2] = {
+    {10, 3},
+    {8, 4},
+    {53, 45},
+    {136, 31}};
+  const Uint8 outputs[TESTS] = {
+    10%3,
+    8%4,
+    53%45,
+    136%31
+  };
+  int i;
+
+  for(i = 0; i < TESTS; i++) {
+  
+    UXN_RESET(u, max_length);
+    LOAD(u, program, max_length);
+    PUSH8(u, inputs[i][0]);
+    PUSH8(u, inputs[i][1]);
+
+  
+    DUMP_PROGRAM(u, max_length);
+    DUMP_WST(u);
+    PRINT(" --> ");
+    
+    uxn_eval(u, PAGE_PROGRAM);
+    
+    DUMP_WST(u);
+    PRINT("\n");
+    
+    
+    if(COUNT8(u) != 1)
+      return 0;
+    if(POP8(u) != outputs[i])
+      return 0;
+    if(!RST_IS_EMPTY(u))
+      return 0;
+  }
+  return 1;
 }
 
 static void
