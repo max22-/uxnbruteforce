@@ -53,42 +53,76 @@ uxn_halt(Uxn *u, Uint8 error, char *name, int id)
 }
 
 static int
+uxn_reset(Uxn *u)
+{
+  if(!uxn_boot(u))
+    return error("Boot", "Failed");
+  
+  /* system   */ uxn_port(u, 0x0, nil_dei, nil_deo);
+  /* console  */ uxn_port(u, 0x1, nil_dei, console_deo);
+  /* empty    */ uxn_port(u, 0x2, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x3, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x4, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x5, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x6, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x7, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x8, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0x9, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xa, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xb, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xc, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xd, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xe, nil_dei, nil_deo);
+  /* empty    */ uxn_port(u, 0xf, nil_dei, nil_deo);
+  return 1;
+}
+
+#define PUSH8(u, a) { u->wst.dat[u->wst.ptr++] = a; }
+#define POP8(u) ( u->wst.dat[--u->wst.ptr] )
+#define COUNT8(u) ( u->wst.ptr )
+#define PUSH16(u, a) { PUSH8(u, a >> 8); PUSH8(u, a); }
+#define POP16(u) ( POP8(u) + (POP8(u) << 8) )
+#define LOAD(u, p, l) { int i; for(i = 0; i < l; i++) u->ram.dat[PAGE_PROGRAM+i] = p[i]; }
+#define RST_IS_EMPTY(u) ( u->rst.ptr == 0 )
+#define DUMP_WST(u) { int i; printf(" [ "); for(i = 0; i < u->wst.ptr; i++) printf("%02x ", u->wst.dat[i]); printf(" ]"); }
+
+static int
 check_mod(Uxn *u, Uint8 *program, Uint8 max_length, Uint8 a, Uint8 b, Uint8 r)
 {
   int i;
+  Uint8 p;
 
+  uxn_reset(u);
+  LOAD(u, program, max_length);
+  PUSH8(u, a);
+  PUSH8(u, b);
+
+  
+  printf("check ");
   for(i = 0; i < max_length; i++)
-    u->ram.dat[PAGE_PROGRAM + i] = program[i];
-  
-  /*if(u->ram.dat[0x100] == 0x9b && u->ram.dat[0x101] == 0x1a && u->ram.dat[0x102] == 0x19) {
-    printf("check_mod(soluce, %d, %d, %d)\n", a, b, r);
-    gdb_bp();
-    }*/
-  
-  u->wst.dat[0] = a;
-  u->wst.dat[1] = b;
-  u->wst.ptr = 2;
-  u->wst.kptr = 0;
-  u->wst.error = 0;
-  u->rst.ptr = 0;
-  u->rst.kptr = 0;
-  u->rst.error = 0;
-
-  u->dev[0].dat[0xf] = 0;
+    printf("%02x ", u->ram.dat[PAGE_PROGRAM+i]);
+  DUMP_WST(u);
+  printf(" --> ");
   
   uxn_eval(u, PAGE_PROGRAM);
-  /*printf("wst = ");
-  for(i =0; i < u->wst.ptr; i++)
-    printf("%02x ", u->wst.dat[i]);
-    printf("\t");*/
-  if(u->wst.ptr != 1)
+  
+  DUMP_WST(u);
+  printf("\n");
+  
+
+  if(COUNT8(u) != 1)
     return 0;
-  if(u->wst.dat[0] != r)
+  p = POP8(u);
+  printf("p = %02x\n", p);
+  if(p != r)
     return 0;
-  if(u->rst.ptr != 0)
+  if(!RST_IS_EMPTY(u)) {
+    printf("rst is not empty");
     return 0;
+  }
   return 1;
 }
+
 
 static int
 check(Uxn *u, Uint8 *program, Uint8 max_length)
@@ -153,7 +187,7 @@ bruteforce(Uxn *u, Uint16 max_length)
       return;
     }
 
-    /*if(u->ram.dat[0x100] == 0x9b && u->ram.dat[0x101] == 0x1a && u->ram.dat[0x102] == 0x19) {
+    if(u->ram.dat[0x100] == 0x9b && u->ram.dat[0x101] == 0x1a && u->ram.dat[0x102] == 0x19) {
       printf("Soluce :\n");
       printf("wst ptr = #%02x\n", u->wst.ptr);
       for(i = 0; i < u->wst.ptr; i++)
@@ -161,7 +195,7 @@ bruteforce(Uxn *u, Uint16 max_length)
       printf("\n");
       return;
       
-      }*/
+    }
 
     /*for(i = 0; i < max_length; i++)
       printf("%02x ", program[i]);
@@ -182,27 +216,6 @@ int
 main(int argc, char **argv)
 {
 	Uxn u;
-
-	if(!uxn_boot(&u))
-		return error("Boot", "Failed");
-
-	/* system   */ uxn_port(&u, 0x0, nil_dei, nil_deo);
-	/* console  */ uxn_port(&u, 0x1, nil_dei, console_deo);
-	/* empty    */ uxn_port(&u, 0x2, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x3, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x4, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x5, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x6, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x7, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x8, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0x9, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xa, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xb, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xc, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xd, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xe, nil_dei, nil_deo);
-	/* empty    */ uxn_port(&u, 0xf, nil_dei, nil_deo);
-
 	bruteforce(&u, 3);
 	return 0; 
 
