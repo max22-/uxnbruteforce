@@ -14,6 +14,70 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
 WITH REGARD TO THIS SOFTWARE.
 */
 
+#define LIT (0x80)   /* Quick hack.... */
+
+#define OPS \
+  X(BRK),   \
+    X(INC), \
+    X(POP), \
+    X(DUP), \
+    X(NIP), \
+    X(SWP), \
+    X(OVR), \
+    X(ROT), \
+    X(EQU), \
+    X(NEQ), \
+    X(GTH), \
+    X(LTH), \
+    X(JMP), \
+    X(JCN), \
+    X(JSR), \
+    X(STH), \
+    X(LDZ), \
+    X(STZ), \
+    X(LDR), \
+    X(STR), \
+    X(LDA), \
+    X(STA), \
+    X(DEI), \
+    X(DEO), \
+    X(ADD), \
+    X(SUB), \
+    X(MUL), \
+    X(DIV), \
+    X(AND), \
+    X(ORA), \
+    X(EOR), \
+    X(SFT)
+
+#define X(x) x
+enum { OPS } ops;
+#undef X
+
+#define X(x) #x
+static const char *op_names[] = { OPS };
+#undef X
+
+#define MODE_SHORT 0x20
+#define MODE_RETURN 0x40
+#define MODE_KEEP 0x80
+
+void disassemble(Uint8 *program, Uint16 max_len)
+{
+  int i;
+  for(i = 0; i < max_len; i++) {
+    Uint8 o = program[i];
+    printf("%s", op_names[o & 0x1F]);
+    if(o & MODE_SHORT)
+      printf("2");
+    if(o & MODE_KEEP)
+      printf("k");
+    if(o & MODE_RETURN)
+      printf("r");
+    printf(" ");
+  }
+  printf("\n");
+}
 
 static int
 error(char *msg, const char *err)
@@ -100,7 +164,7 @@ uxn_reset_fast(Uxn *u, Uint8 max_length)
 #define LOAD(u, p, l) { int i; for(i = 0; i < l; i++) u->ram.dat[PAGE_PROGRAM+i] = p[i]; }
 #define RST_IS_EMPTY(u) ( u->rst.ptr == 0 )
 
-#define DEBUG
+/* #define DEBUG */
 #ifdef DEBUG
 #define DUMP_WST(u) { int i; printf(" [ "); for(i = 0; i < u->wst.ptr; i++) printf("%02x ", u->wst.dat[i]); printf(" ]"); }
 #define DUMP_PROGRAM(u, l) { int i; for(i = 0; i < max_length; i++) printf("%02x ", u->ram.dat[PAGE_PROGRAM+i]); }
@@ -137,15 +201,19 @@ check(Uxn *u, Uint8 *program, Uint16 max_length)
     PUSH16(u, inputs[i][0]);
     PUSH16(u, inputs[i][1]);
 
-  
+
+    /* Debugging stuff */
     DUMP_PROGRAM(u, max_length);
     DUMP_WST(u);
     PRINT(" --> ");
+    /*******************/
     
     uxn_eval(u, PAGE_PROGRAM);
-    
+
+    /* Debugging stuff */
     DUMP_WST(u);
     PRINT("\n");
+    /*******************/
     
     
     if(COUNT16(u) != 1)
@@ -176,11 +244,6 @@ inc(Uint8 *program, Uint16 max_length)
   }
 }
 
-#define LIT (0x80)
-#define JMP (0x0c)
-#define JCN (0x0d)
-#define JSR (0x0e)
-
 static int
 check_program(Uint8 *program, Uint16 max_length)
 {
@@ -209,6 +272,7 @@ bruteforce(Uxn *u, Uint16 max_length)
       for(i = 0; i < max_length; i++)
 	printf("%02x ", program[i]);
       printf("\n");
+      disassemble(program, max_length);
       return;
     }
 
