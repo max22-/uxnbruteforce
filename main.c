@@ -271,7 +271,7 @@ inc(Uint8 *program, Uint16 max_length)
 
 /* We skip programs that contain opcodes that are (maybe ?) not useful to optimize little macros */
 static int
-check_program(Uint8 *program, Uint16 max_length)
+check_instructions(Uint8 *program, Uint16 max_length)
 {
   Uint8 op;
   int i;
@@ -311,7 +311,7 @@ bruteforce(Uxn *u, Uint16 max_length)
 
     do {
       inc(program, max_length);
-    } while(!check_program(program, max_length));
+    } while(!check_instructions(program, max_length));
   } 
 }
 
