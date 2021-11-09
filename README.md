@@ -34,3 +34,7 @@ A quick and dirty hack is made in uxn-fast.c, to avoid infinite loops. (the main
 
 - LIT won't be well decoded in the disassembler output
 - There is a trailing "1" opcode in the generated programs, but it is not a big deal since there are some BRK before.
+
+# Contact
+
+Mastodon: @maxime_andre@mastodon.xyz
