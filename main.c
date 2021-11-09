@@ -113,7 +113,6 @@ uxn_reset_full(Uxn *u, Uint16 max_length) /* max_length is here only to have the
 }
 
 static void uxn_reset_fast(Uxn *u, Uint8 max_length) {
-  int i;
   u->wst.ptr = 0;
   u->wst.kptr = 0;
   u->wst.error = 0;
