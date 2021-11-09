@@ -76,7 +76,6 @@ void disassemble(Uint8 *program, Uint16 max_len)
       printf("r");
     printf(" ");
   }
-  printf("\n");
 }
 
 static int
@@ -177,33 +176,59 @@ uxn_reset_fast(Uxn *u, Uint8 max_length)
 
 #define UXN_RESET uxn_reset_fast
 
+#define TESTS 14
+static const Uint16 inputs[TESTS][3] = {
+  {3, 10, 4},
+  {4, 8, 3},
+  {45, 53,  45},
+  {31, 136, 140},
+  {10, 250, 250},
+  {12, 14, 13},
+  {12, 14, 15},
+  {0, 10, 11},
+  {0, 10, 7},
+  {136, 138, 10},
+  {136, 138, 137},
+  {136, 138, 136},
+  {136, 138, 138},
+  {136, 138, 254}
+};
+
+static Uint16 outputs[TESTS];
+
+static void init_tests()
+{
+  int i;
+  for(i = 0; i < TESTS; i++) {
+    outputs[i] = (inputs[i][2] >= inputs[i][0]) && (inputs[i][2] <= inputs[i][1]);
+    /*
+    printf("%d [%d, %d] -> %d\n", inputs[i][2], inputs[i][0], inputs[i][1], outputs[i]);
+    */
+  }
+  /* printf("\n");
+  exit(0);*/
+  
+}
+
 static int
 check(Uxn *u, Uint8 *program, Uint16 max_length)
 {
-  #define TESTS 4
-  const Uint16 inputs[TESTS][2] = {
-    {10, 3},
-    {8, 4},
-    {53, 45},
-    {136, 31}};
-  const Uint16 outputs[TESTS] = {
-    10%3,
-    8%4,
-    53%45,
-    136%31
-  };
   int i;
 
   for(i = 0; i < TESTS; i++) {
   
     UXN_RESET(u, max_length);
     LOAD(u, program, max_length);
-    PUSH16(u, inputs[i][0]);
-    PUSH16(u, inputs[i][1]);
+    PUSH8(u, inputs[i][0]);
+    PUSH8(u, inputs[i][1]);
+    PUSH8(u, inputs[i][2]);
 
 
     /* Debugging stuff */
     DUMP_PROGRAM(u, max_length);
+#ifdef DEBUG
+    disassemble(program, max_length);
+#endif
     DUMP_WST(u);
     PRINT(" --> ");
     /*******************/
@@ -216,9 +241,9 @@ check(Uxn *u, Uint8 *program, Uint16 max_length)
     /*******************/
     
     
-    if(COUNT16(u) != 1)
+    if(COUNT8(u) != 1)
       return 0;
-    if(POP16(u) != outputs[i])
+    if(POP8(u) != outputs[i])
       return 0;
     if(!RST_IS_EMPTY(u))
       return 0;
@@ -244,18 +269,21 @@ inc(Uint8 *program, Uint16 max_length)
   }
 }
 
-
-/* We skip all programs that contain a jump, to avoid infinite loops */
+/* We skip programs that contain opcodes that are (maybe ?) not useful to optimize little macros */
 static int
 check_program(Uint8 *program, Uint16 max_length)
 {
   Uint8 op;
   int i;
   for(i = 0; i < max_length; i++) {
-    if(program[i] == LIT)
+    if(program[i] == LIT) {
       i++;
+      continue;
+    }
     op = program[i] & 0x1f;
-    if(op >= JMP && op <= JSR)
+    if(op == DEI || op == DEO)
+      return 0;
+    if(op == LDZ || op == STZ || op == LDR || op == STR || op == LDA || op == STA)
       return 0;
   }
   return 1;
@@ -293,8 +321,9 @@ int
 main(int argc, char **argv)
 {
 	Uxn u;
-	Uint16 max_length = 4;
-	uxn_reset_full(&u, max_length);  /* At 1 full reset to initalize the devices (fast reset doesn't initialize them) */
+	Uint16 max_length = 7;
+	init_tests();
+	uxn_reset_full(&u, max_length);  /* At least 1 full reset to initalize the devices (fast reset doesn't initialize them) */
 	bruteforce(&u, max_length);
 	return 0; 
 

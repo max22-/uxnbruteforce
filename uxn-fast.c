@@ -43,12 +43,13 @@ static void   devw16(Device *d, Uint8 a, Uint16 b) { devw8(d, a, b >> 8); devw8(
 int
 uxn_eval(Uxn *u, Uint16 vec)
 {
+  int loopcount = 0;
 	Uint8 instr;
 	if(!vec || u->dev[0].dat[0xf]) 
 		return 0;
 	u->ram.ptr = vec;
 	if(u->wst.ptr > 0xf8) u->wst.ptr = 0xf8;
-	while((instr = u->ram.dat[u->ram.ptr++])) {
+	while((instr = u->ram.dat[u->ram.ptr++]) && loopcount++ < 100) {
 		switch(instr) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-value"
