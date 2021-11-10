@@ -87,8 +87,7 @@ int uxn_halt(Uxn *u, Uint8 error, char *name, int id) {
 }
 
 static int
-uxn_reset_full(Uxn *u, Uint16 max_length) /* max_length is here only to have the
-                                             same prototype as uxn_reset_fast */
+uxn_reset_full(Uxn *u)
 {
   if (!uxn_boot(u))
     return error("Boot", "Failed");
@@ -112,7 +111,7 @@ uxn_reset_full(Uxn *u, Uint16 max_length) /* max_length is here only to have the
   return 1;
 }
 
-static void uxn_reset_fast(Uxn *u, Uint8 max_length) {
+static void uxn_reset_fast(Uxn *u) {
   u->wst.ptr = 0;
   u->wst.kptr = 0;
   u->wst.error = 0;
@@ -194,7 +193,7 @@ static int check(Uxn *u, Uint8 *program, Uint16 max_length) {
 
   for (i = 0; i < TESTS; i++) {
 
-    UXN_RESET(u, max_length);
+    UXN_RESET(u);
     LOAD(u, program, max_length);
     PUSH16(u, inputs[i][0]);
     PUSH16(u, inputs[i][1]);
@@ -294,8 +293,7 @@ int main(int argc, char **argv) {
   Uxn u;
   Uint16 max_length = 7;
   init_tests();
-  uxn_reset_full(&u,
-                 max_length); /* At least 1 full reset to initalize the devices
+  uxn_reset_full(&u); /* At least 1 full reset to initalize the devices
                                  (fast reset doesn't initialize them) */
   bruteforce(&u, max_length);
   return 0;
